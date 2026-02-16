@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      width: 240px;
+      margin: 0;
+      padding: 12px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #fff;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    button {
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid #dadce0;
+      background: #f8f9fa;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    button:hover {
+      background: #e8eaed;
+    }
+
+    button:active {
+      background: #dadce0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button id="dedupeBtn">Close Duplicate Tabs</button>
+    <button id="bookmarkBtn">Bookmark Window Tabs</button>
+      <hr />
+    <button id="preferencesBtn">Preferences</button>
+  </div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

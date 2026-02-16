@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            body {
+            font-family: system-ui, sans-serif;
+            padding: 20px;
+            max-width: 500px;
+            }
+            input, select {
+            width: 100%;
+            padding: 6px;
+            margin-top: 4px;
+            margin-bottom: 12px;
+            }
+            button {
+            padding: 8px 12px;
+            }
+            .hint {
+            font-size: 12px;
+            color: #666;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Bookmark Folder Preferences</h2>
+
+        <label>Folder Name Template</label>
+        <input id="template" />
+        <div class="hint">
+            Variables: {YYYY} {MM} {DD} {HH} {mm}
+        </div>
+
+        <label>When folder exists</label>
+        <select id="behavior">
+            <option value="increment">Increment name by 1 </option>
+            <option value="append">Append to existing folder</option>
+        </select>
+
+        <button id="save">Save</button>
+
+        <script type="module" src="options.js"></script>
+
+    </body>
+</html>

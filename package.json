@@ -1,0 +1,23 @@
+{
+  "name": "tabs-de-clutter",
+  "version": "1.0.0",
+  "description": "Chrome extension for tab management and bookmarking",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:watch": "node --watch scripts/build.mjs",
+    "build:release": "npm run build && node scripts/rename-release.mjs",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-webextension-mock": "^4.0.0",
+    "web-ext": "^9.3.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom"
+  }
+}
