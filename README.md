@@ -76,6 +76,11 @@ Bookmarks are created under the browser’s “Other Bookmarks” root folder (t
 
 ### Firefox
 
+Install directly from the Firefox Add-ons store:
+[https://addons.mozilla.org/en-US/developers/addon/tabs-de-clutter/edit](https://addons.mozilla.org/en-US/developers/addon/tabs-de-clutter/edit)
+
+For local development:
+
 1. Download the latest release from the GitHub repository
 2. Extract the downloaded ZIP file
 3. Open Firefox and go to `about:debugging#/runtime/this-firefox`
