@@ -9,6 +9,7 @@ describe('popup.js', () => {
       <button id="dedupeBtn">dedupe</button>
       <button id="bookmarkBtn">bookmark</button>
       <button id="saveAsNoteBtn">save as note</button>
+      <button id="saveUrlAsNoteBtn">save url as note</button>
       <button id="preferencesBtn">prefs</button>
     `;
 
@@ -53,6 +54,14 @@ describe('popup.js', () => {
     document.getElementById('saveAsNoteBtn').click();
 
     expect(mockChrome.runtime.sendMessage).toHaveBeenCalledWith({ action: 'save_current_tab_as_note' });
+    expect(window.close).toHaveBeenCalled();
+  });
+
+  it('wires listeners and triggers save_current_tab_url_as_note on save URL note click', () => {
+    setupPopup();
+    document.getElementById('saveUrlAsNoteBtn').click();
+
+    expect(mockChrome.runtime.sendMessage).toHaveBeenCalledWith({ action: 'save_current_tab_url_as_note' });
     expect(window.close).toHaveBeenCalled();
   });
 

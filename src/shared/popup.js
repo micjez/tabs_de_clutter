@@ -4,6 +4,7 @@ export function setupPopup() {
   const dedupeBtn = document.getElementById('dedupeBtn');
   const bookmarkBtn = document.getElementById('bookmarkBtn');
   const saveAsNoteBtn = document.getElementById('saveAsNoteBtn');
+  const saveUrlAsNoteBtn = document.getElementById('saveUrlAsNoteBtn');
   const preferencesBtn = document.getElementById('preferencesBtn');
 
   const ext = getExt();
@@ -25,6 +26,13 @@ export function setupPopup() {
   if (saveAsNoteBtn) {
     saveAsNoteBtn.addEventListener('click', () => {
       ext.runtimeSendMessage({ action: 'save_current_tab_as_note' });
+      window.close();
+    });
+  }
+
+  if (saveUrlAsNoteBtn) {
+    saveUrlAsNoteBtn.addEventListener('click', () => {
+      ext.runtimeSendMessage({ action: 'save_current_tab_url_as_note' });
       window.close();
     });
   }

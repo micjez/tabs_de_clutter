@@ -338,6 +338,19 @@ export async function saveCurrentTabAsNote(chromeAPI = chrome, fetchImpl = globa
   await saveMarkdownFile(buildNoteFilename(article.title), finalMarkdown);
 }
 
+export async function saveCurrentTabUrlAsNote(chromeAPI = chrome) {
+  const api = toChromeLikeAPI(chromeAPI === chrome ? getExt() : chromeAPI);
+  const tabs = await api.tabs.query({ active: true, currentWindow: true });
+  const activeTab = (tabs || [])[0];
+
+  if (!activeTab || !activeTab.url) {
+    throw new Error('No active tab URL available.');
+  }
+
+  const title = String(activeTab.title || 'Untitled').trim() || 'Untitled';
+  await saveMarkdownFile(title, `${activeTab.url}\n`);
+}
+
 function findFolderById(tree, folderId) {
   for (const node of tree) {
     if (node.id === folderId && !node.url) {
@@ -422,6 +435,11 @@ if (runtime && runtime.onMessage) {
     if (msg?.action === 'save_current_tab_as_note') {
       saveCurrentTabAsNote().catch((error) => {
         console.error('Error saving current tab as note:', error);
+      });
+    }
+    if (msg?.action === 'save_current_tab_url_as_note') {
+      saveCurrentTabUrlAsNote().catch((error) => {
+        console.error('Error saving current tab URL as note:', error);
       });
     }
   });

@@ -9,6 +9,7 @@ This extension solves the common problem of having too many tabs open by:
 - **Closing duplicate tabs** - Automatically identifies and closes duplicate tabs in the current window
 - **Bookmarking all tabs** - Saves all open tabs as bookmarks in a dated folder for later reference. Ensures your bookmark collection remains clean by avoiding duplicate bookmarks
 - **Saving current tab as AI note** - Extracts the active page content, summarizes it with OpenAI, and saves a Markdown note
+- **Saving current tab URL as note** - Saves a simple Markdown note named after the page title containing the page URL
 - **Exporting bookmark folders to Markdown** - Save a bookmark folder as a `.md` note from the bookmark context menu
 
 ## When to Use It
@@ -17,6 +18,7 @@ This extension solves the common problem of having too many tabs open by:
 - When your browser becomes slow due to too many tabs
 - When you want to save your current browsing session for later
 - When you want a wiki-style AI summary of the current page as Markdown
+- When you want a quick Markdown note that stores only the current page URL
 - When you want a Markdown note of a bookmark folder
 - During research with many similar resources
 
@@ -53,6 +55,13 @@ The extension detects duplicates using **exact URL matching**. Two tabs are cons
 - Output is saved as Markdown via native save dialog
 - Summaries can include Mermaid diagrams when the source contains process/loop/decision content
 - The extension strips accidental outer ````markdown` wrappers from model output before saving
+
+### Save Current Tab URL as Note
+
+- Open the extension popup and click **Save Current Tab URL as Note**
+- Creates a Markdown file named from the active tab title
+- File content contains the active tab URL
+- A native save dialog opens so you can choose where to save the `.md` file
 
 ## Preferences (Options)
 

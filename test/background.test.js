@@ -36,7 +36,8 @@ const {
   buildFolderPath,
   generateMarkdownTable,
   saveBookmarkFolderAsNote,
-  saveCurrentTabAsNote
+  saveCurrentTabAsNote,
+  saveCurrentTabUrlAsNote
 } = await import('../src/shared/background.js');
 const { summarizeArticleAsMarkdown } = await import('../src/shared/openai-client.js');
 const { saveMarkdownFile } = await import('../src/shared/file-handler.js');
@@ -543,6 +544,29 @@ describe('background.js', () => {
       await expect(saveCurrentTabAsNote(mockChromeAPI))
         .rejects
         .toThrow('OpenAI API key is missing. Set it in Preferences.');
+    });
+  });
+
+  describe('saveCurrentTabUrlAsNote', () => {
+    it('should save active tab title as filename and URL as content', async () => {
+      mockChromeAPI.tabs.query.mockResolvedValue([
+        { id: 23, title: 'Example Page', url: 'https://example.com/article' }
+      ]);
+
+      await saveCurrentTabUrlAsNote(mockChromeAPI);
+
+      expect(saveMarkdownFile).toHaveBeenCalledWith(
+        'Example Page',
+        'https://example.com/article\n'
+      );
+    });
+
+    it('should fail when active tab URL is missing', async () => {
+      mockChromeAPI.tabs.query.mockResolvedValue([{ id: 23, title: 'Broken tab' }]);
+
+      await expect(saveCurrentTabUrlAsNote(mockChromeAPI))
+        .rejects
+        .toThrow('No active tab URL available.');
     });
   });
 });
