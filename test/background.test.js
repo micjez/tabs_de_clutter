@@ -19,9 +19,15 @@ global.URL.revokeObjectURL = jest.fn();
 jest.unstable_mockModule('../src/shared/file-handler.js', () => ({
   saveMarkdownFile: jest.fn().mockResolvedValue(true)
 }));
+jest.unstable_mockModule('../src/shared/openai-client.js', () => ({
+  summarizeArticleAsMarkdown: jest.fn().mockResolvedValue('# Summary\n- A'),
+  DEFAULT_OPENAI_MODEL: 'gpt-4.1-mini',
+  DEFAULT_MAX_INPUT_CHARS: 20000
+}));
 
 const {
   getSettings,
+  getAiNoteSettings,
   getOtherBookmarksFolder,
   createFolderName,
   bookmarkCurrentWindowTabs,
@@ -29,14 +35,17 @@ const {
   extractBookmarksFromFolder,
   buildFolderPath,
   generateMarkdownTable,
-  saveBookmarkFolderAsNote
+  saveBookmarkFolderAsNote,
+  saveCurrentTabAsNote
 } = await import('../src/shared/background.js');
+const { summarizeArticleAsMarkdown } = await import('../src/shared/openai-client.js');
+const { saveMarkdownFile } = await import('../src/shared/file-handler.js');
 
 describe('background.js', () => {
   let mockChromeAPI;
 
   beforeEach(() => {
-    mockChromeAPI = {
+      mockChromeAPI = {
       storage: {
         sync: {
           get: jest.fn(),
@@ -50,7 +59,11 @@ describe('background.js', () => {
       },
       tabs: {
         query: jest.fn(),
-        remove: jest.fn()
+        remove: jest.fn(),
+        executeScript: jest.fn()
+      },
+      scripting: {
+        executeScript: jest.fn()
       },
       runtime: {
         onMessage: {
@@ -130,6 +143,39 @@ describe('background.js', () => {
       expect(settings).toEqual({
         template: "custom_{YYYY}",
         behavior: "increment"
+      });
+    });
+  });
+
+  describe('getAiNoteSettings', () => {
+    it('should return defaults when storage is empty', async () => {
+      mockChromeAPI.storage.sync.get.mockResolvedValue({});
+
+      const settings = await getAiNoteSettings(mockChromeAPI);
+
+      expect(settings).toEqual({
+        openaiApiKey: '',
+        openaiModel: 'gpt-4.1-mini',
+        summaryPromptOverride: '',
+        maxInputChars: 20000
+      });
+    });
+
+    it('should return stored AI settings', async () => {
+      mockChromeAPI.storage.sync.get.mockResolvedValue({
+        openaiApiKey: 'sk-test',
+        openaiModel: 'gpt-custom',
+        summaryPromptOverride: 'custom',
+        maxInputChars: 9000
+      });
+
+      const settings = await getAiNoteSettings(mockChromeAPI);
+
+      expect(settings).toEqual({
+        openaiApiKey: 'sk-test',
+        openaiModel: 'gpt-custom',
+        summaryPromptOverride: 'custom',
+        maxInputChars: 9000
       });
     });
   });
@@ -454,6 +500,49 @@ describe('background.js', () => {
       await saveBookmarkFolderAsNote('folder1', mockChromeAPI);
 
       expect(mockChromeAPI.bookmarks.getTree).toHaveBeenCalled();
+    });
+  });
+
+  describe('saveCurrentTabAsNote', () => {
+    it('should summarize active tab and save markdown', async () => {
+      mockChromeAPI.storage.sync.get.mockResolvedValue({
+        openaiApiKey: 'sk-test',
+        openaiModel: 'gpt-4.1-mini',
+        summaryPromptOverride: '',
+        maxInputChars: 20000
+      });
+      mockChromeAPI.tabs.query.mockResolvedValue([{ id: 12, url: 'https://example.com' }]);
+      mockChromeAPI.scripting.executeScript.mockResolvedValue([{
+        result: {
+          title: 'Example title',
+          url: 'https://example.com',
+          content: 'A long article body'
+        }
+      }]);
+
+      await saveCurrentTabAsNote(mockChromeAPI);
+
+      expect(summarizeArticleAsMarkdown).toHaveBeenCalledWith(expect.objectContaining({
+        apiKey: 'sk-test',
+        model: 'gpt-4.1-mini',
+        article: expect.objectContaining({
+          title: 'Example title',
+          url: 'https://example.com',
+          content: 'A long article body'
+        })
+      }));
+      expect(saveMarkdownFile).toHaveBeenCalledWith(
+        expect.stringContaining('Example title_'),
+        expect.stringContaining('Source: https://example.com')
+      );
+    });
+
+    it('should fail when api key is missing', async () => {
+      mockChromeAPI.storage.sync.get.mockResolvedValue({});
+
+      await expect(saveCurrentTabAsNote(mockChromeAPI))
+        .rejects
+        .toThrow('OpenAI API key is missing. Set it in Preferences.');
     });
   });
 });

@@ -7,6 +7,11 @@ import {
 } from './utils.js';
 import { getExt } from './ext.js';
 import { saveMarkdownFile } from './file-handler.js';
+import {
+  summarizeArticleAsMarkdown,
+  DEFAULT_OPENAI_MODEL,
+  DEFAULT_MAX_INPUT_CHARS
+} from './openai-client.js';
 
 // Temporary workaround: create the functions inline since import is failing
 function extractBookmarksFromFolder(folderNode, folderMap = {}) {
@@ -77,39 +82,6 @@ function generateMarkdownTable(bookmarks) {
   return table;
 }
 
-// Temporary workaround: create file handler functions inline since import is failing
-function sanitizeFilename(name) {
-  return name
-    .replace(/[<>:"/\\|?*]/g, '_')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .substring(0, 200);
-}
-
-async function saveFileWithFirefoxAPI(filename, content) {
-  const ext = getExt();
-  
-  try {
-    const blob = new Blob([content], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    
-    const downloadId = await ext.downloadsDownload({
-      url: url,
-      filename: filename,
-      saveAs: true // Always show save dialog
-    });
-    
-    URL.revokeObjectURL(url);
-    return downloadId;
-  } catch (error) {
-    // Don't show error for user cancellation
-    if (error.name !== 'AbortError' && !error.message.includes('canceled')) {
-      console.error('Firefox download error:', error);
-      throw error;
-    }
-  }
-}
-
 export { extractBookmarksFromFolder, buildFolderPath, generateMarkdownTable };
 
 function toChromeLikeAPI(api) {
@@ -142,6 +114,33 @@ function toChromeLikeAPI(api) {
 function isInternalUrl(url) {
   const u = String(url ?? '');
   return u.startsWith('chrome://') || u.startsWith('about:') || u.startsWith('moz-extension://');
+}
+
+function getNativeAPI(api) {
+  if (api) return api;
+  if (typeof browser !== 'undefined') return browser;
+  if (typeof chrome !== 'undefined') return chrome;
+  return undefined;
+}
+
+export async function getAiNoteSettings(chromeAPI = chrome) {
+  chromeAPI = toChromeLikeAPI(chromeAPI === chrome ? getExt() : chromeAPI);
+  const data = (await chromeAPI.storage.sync.get([
+    'openaiApiKey',
+    'openaiModel',
+    'summaryPromptOverride',
+    'maxInputChars'
+  ])) || {};
+
+  const parsedMax = Number(data.maxInputChars);
+  return {
+    openaiApiKey: data.openaiApiKey !== undefined ? data.openaiApiKey : '',
+    openaiModel: data.openaiModel !== undefined ? data.openaiModel : DEFAULT_OPENAI_MODEL,
+    summaryPromptOverride: data.summaryPromptOverride !== undefined ? data.summaryPromptOverride : '',
+    maxInputChars: Number.isFinite(parsedMax) && parsedMax > 0
+      ? Math.floor(parsedMax)
+      : DEFAULT_MAX_INPUT_CHARS
+  };
 }
 
 export async function getSettings(chromeAPI = chrome) {
@@ -225,6 +224,120 @@ export async function saveBookmarkFolderAsNote(folderId, chromeAPI = chrome) {
   }
 }
 
+function extractReadableContentInPage() {
+  const clean = (value) => String(value || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  const candidates = [];
+  const selectors = ['article', 'main', '[role="main"]'];
+
+  for (const selector of selectors) {
+    const element = document.querySelector(selector);
+    if (element && element.innerText) {
+      candidates.push(element.innerText);
+    }
+  }
+
+  if (document.body && document.body.innerText) {
+    candidates.push(document.body.innerText);
+  }
+
+  const content = candidates
+    .map(clean)
+    .sort((a, b) => b.length - a.length)[0] || '';
+
+  return {
+    title: document.title || 'untitled',
+    url: location.href,
+    content
+  };
+}
+
+export async function extractActiveTabContent(nativeAPI) {
+  const tabs = await nativeAPI.tabs.query({ active: true, currentWindow: true });
+  const activeTab = (tabs || [])[0];
+
+  if (!activeTab || !activeTab.id) {
+    throw new Error('No active tab available.');
+  }
+
+  if (isInternalUrl(activeTab.url)) {
+    throw new Error('This page cannot be summarized.');
+  }
+
+  if (nativeAPI.scripting && nativeAPI.scripting.executeScript) {
+    const results = await nativeAPI.scripting.executeScript({
+      target: { tabId: activeTab.id },
+      func: extractReadableContentInPage
+    });
+    return results?.[0]?.result;
+  }
+
+  if (nativeAPI.tabs && nativeAPI.tabs.executeScript) {
+    const code = `(${extractReadableContentInPage.toString()})()`;
+    const results = await nativeAPI.tabs.executeScript(activeTab.id, { code });
+    return Array.isArray(results) ? results[0] : results;
+  }
+
+  throw new Error('Script injection API is not available.');
+}
+
+function buildNoteFilename(title) {
+  const cleaned = String(title || 'note')
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 120);
+
+  const date = new Date().toISOString().slice(0, 10);
+  return `${cleaned || 'note'}_${date}`;
+}
+
+export async function saveCurrentTabAsNote(chromeAPI = chrome, fetchImpl = globalThis.fetch) {
+  const settingsAPI = toChromeLikeAPI(chromeAPI === chrome ? getExt() : chromeAPI);
+  const nativeAPI = getNativeAPI(chromeAPI === chrome ? undefined : chromeAPI);
+  const settings = await getAiNoteSettings(settingsAPI);
+
+  if (!settings.openaiApiKey) {
+    throw new Error('OpenAI API key is missing. Set it in Preferences.');
+  }
+
+  const extracted = await extractActiveTabContent(nativeAPI);
+  if (!extracted || !String(extracted.content || '').trim()) {
+    throw new Error('Could not extract readable content from this page.');
+  }
+
+  const capturedAt = new Date().toISOString();
+  const content = String(extracted.content).slice(0, settings.maxInputChars);
+  const article = {
+    title: extracted.title || 'Untitled',
+    url: extracted.url || '',
+    capturedAt,
+    content
+  };
+
+  const markdown = await summarizeArticleAsMarkdown({
+    apiKey: settings.openaiApiKey,
+    model: settings.openaiModel,
+    promptOverride: settings.summaryPromptOverride,
+    article,
+    fetchImpl
+  });
+
+  const finalMarkdown = [
+    markdown.trim(),
+    '',
+    '---',
+    `Source: ${article.url}`,
+    `Captured: ${article.capturedAt}`
+  ].join('\n');
+
+  await saveMarkdownFile(buildNoteFilename(article.title), finalMarkdown);
+}
+
 function findFolderById(tree, folderId) {
   for (const node of tree) {
     if (node.id === folderId && !node.url) {
@@ -306,6 +419,11 @@ if (runtime && runtime.onMessage) {
   runtime.onMessage.addListener((msg) => {
     if (msg?.action === 'bookmark_window') bookmarkCurrentWindowTabs();
     if (msg?.action === 'close_duplicates') closeDuplicatesInCurrentWindow();
+    if (msg?.action === 'save_current_tab_as_note') {
+      saveCurrentTabAsNote().catch((error) => {
+        console.error('Error saving current tab as note:', error);
+      });
+    }
   });
 }
 

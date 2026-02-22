@@ -3,7 +3,8 @@
   "name": "Tabs De Clutter",
   "version": "1.0",
   "description": "Close duplicate tabs and bookmark window all tabs to catch up later",
-  "permissions": ["tabs", "bookmarks", "storage", "contextMenus"],
+  "permissions": ["tabs", "bookmarks", "storage", "contextMenus", "scripting", "activeTab", "downloads"],
+  "host_permissions": ["https://api.openai.com/*"],
   "background": {
     "service_worker": "background.js",
     "type": "module"

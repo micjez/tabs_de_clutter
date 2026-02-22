@@ -101,13 +101,21 @@ async function buildFirefoxDist(outDir) {
   // Bundle JS (very small project => simple concatenation)
   const extCode = stripEsm(await readFile(path.join(sharedDir, 'ext.js'), 'utf8'));
   const utilsCode = stripEsm(await readFile(path.join(sharedDir, 'utils.js'), 'utf8'));
+  const fileHandlerCode = stripEsm(await readFile(path.join(sharedDir, 'file-handler.js'), 'utf8'));
+  const openAiClientCode = stripEsm(await readFile(path.join(sharedDir, 'openai-client.js'), 'utf8'));
   const backgroundCode = stripEsm(await readFile(path.join(sharedDir, 'background.js'), 'utf8'));
   const popupCode = stripEsm(await readFile(path.join(sharedDir, 'popup.js'), 'utf8'));
   const optionsCode = stripEsm(await readFile(path.join(sharedDir, 'options.js'), 'utf8'));
 
-  await writeFileUtf8(path.join(outDir, 'background.js'), `${extCode}\n${utilsCode}\n${backgroundCode}`);
+  await writeFileUtf8(
+    path.join(outDir, 'background.js'),
+    `${extCode}\n${utilsCode}\n${fileHandlerCode}\n${openAiClientCode}\n${backgroundCode}`
+  );
   await writeFileUtf8(path.join(outDir, 'popup.js'), `${extCode}\n${popupCode}`);
-  await writeFileUtf8(path.join(outDir, 'options.js'), `${extCode}\n${utilsCode}\n${optionsCode}`);
+  await writeFileUtf8(
+    path.join(outDir, 'options.js'),
+    `${extCode}\n${utilsCode}\n${openAiClientCode}\n${optionsCode}`
+  );
 
   // Ensure the standalone modules are not left around to confuse debugging.
   // (They were copied by copyDir above; overwrite with MV2-friendly bundles.)

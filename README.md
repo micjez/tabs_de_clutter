@@ -8,6 +8,7 @@ This extension solves the common problem of having too many tabs open by:
 
 - **Closing duplicate tabs** - Automatically identifies and closes duplicate tabs in the current window
 - **Bookmarking all tabs** - Saves all open tabs as bookmarks in a dated folder for later reference. Ensures your bookmark collection remains clean by avoiding duplicate bookmarks
+- **Saving current tab as AI note** - Extracts the active page content, summarizes it with OpenAI, and saves a Markdown note
 - **Exporting bookmark folders to Markdown** - Save a bookmark folder as a `.md` note from the bookmark context menu
 
 ## When to Use It
@@ -15,6 +16,7 @@ This extension solves the common problem of having too many tabs open by:
 - When you have dozens of research tabs open
 - When your browser becomes slow due to too many tabs
 - When you want to save your current browsing session for later
+- When you want a wiki-style AI summary of the current page as Markdown
 - When you want a Markdown note of a bookmark folder
 - During research with many similar resources
 
@@ -43,6 +45,15 @@ The extension detects duplicates using **exact URL matching**. Two tabs are cons
 - Generates a Markdown file with a table of bookmarks (title, date added, folder path)
 - A native save dialog opens so you can choose where to save the `.md` file
 
+### Save Current Tab as AI Note
+
+- Open the extension popup and click **Save Current Tab as Note**
+- The extension extracts readable content from the active tab (`article`, `main`, then body fallback)
+- Extracted text is sent to OpenAI API using your configured API key/model
+- Output is saved as Markdown via native save dialog
+- Summaries can include Mermaid diagrams when the source contains process/loop/decision content
+- The extension strips accidental outer ````markdown` wrappers from model output before saving
+
 ## Preferences (Options)
 
 Open the Preferences/Options page from the extension popup (*Preferences* button), or via the browser extension details page.
@@ -70,6 +81,19 @@ Open the Preferences/Options page from the extension popup (*Preferences* button
 ### Where bookmarks are created
 
 Bookmarks are created under the browser’s “Other Bookmarks” root folder (the extension searches for a root folder containing the word `other`).
+
+### AI note settings
+
+- **OpenAI API Key**: Required to use *Save Current Tab as Note*
+- **Model**: OpenAI model used for summarization (default: `gpt-4.1-mini`)
+- **Prompt Override**: Optional custom prompt if you want to control output style
+- **Max Input Characters**: Limits extracted page text sent to OpenAI
+
+### Privacy / data handling
+
+- For AI note generation, the extension sends extracted page content and source metadata to OpenAI API.
+- The extension does **not** send only URL for summarization; it sends extracted text to ensure reliable output.
+- Do not use AI note generation for pages containing sensitive/private content unless you are comfortable sending it to OpenAI.
 
 ## Installation
 

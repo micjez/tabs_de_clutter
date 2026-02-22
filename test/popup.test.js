@@ -8,6 +8,7 @@ describe('popup.js', () => {
     document.body.innerHTML = `
       <button id="dedupeBtn">dedupe</button>
       <button id="bookmarkBtn">bookmark</button>
+      <button id="saveAsNoteBtn">save as note</button>
       <button id="preferencesBtn">prefs</button>
     `;
 
@@ -20,7 +21,6 @@ describe('popup.js', () => {
 
     global.chrome = mockChrome;
 
-    // JSDOM provides window, but we want to observe close().
     Object.defineProperty(window, 'close', {
       value: jest.fn(),
       configurable: true
@@ -45,6 +45,14 @@ describe('popup.js', () => {
     document.getElementById('bookmarkBtn').click();
 
     expect(mockChrome.runtime.sendMessage).toHaveBeenCalledWith({ action: 'bookmark_window' });
+    expect(window.close).toHaveBeenCalled();
+  });
+
+  it('wires listeners and triggers save_current_tab_as_note on save note click', () => {
+    setupPopup();
+    document.getElementById('saveAsNoteBtn').click();
+
+    expect(mockChrome.runtime.sendMessage).toHaveBeenCalledWith({ action: 'save_current_tab_as_note' });
     expect(window.close).toHaveBeenCalled();
   });
 

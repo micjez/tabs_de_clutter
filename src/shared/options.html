@@ -5,9 +5,9 @@
             body {
             font-family: system-ui, sans-serif;
             padding: 20px;
-            max-width: 500px;
+            max-width: 640px;
             }
-            input, select {
+            input, select, textarea {
             width: 100%;
             padding: 6px;
             margin-top: 4px;
@@ -19,6 +19,9 @@
             .hint {
             font-size: 12px;
             color: #666;
+            }
+            hr {
+            margin: 20px 0;
             }
         </style>
     </head>
@@ -36,6 +39,25 @@
             <option value="increment">Increment name by 1 </option>
             <option value="append">Append to existing folder</option>
         </select>
+
+        <hr />
+
+        <h2>AI Note Preferences</h2>
+
+        <label>OpenAI API Key</label>
+        <input id="openaiApiKey" type="password" autocomplete="off" placeholder="sk-..." />
+
+        <label>Model</label>
+        <input id="openaiModel" placeholder="gpt-4.1-mini" />
+
+        <label>Prompt Override (optional)</label>
+        <textarea id="summaryPromptOverride" rows="5" placeholder="Optional custom prompt for summary output"></textarea>
+
+        <label>Max Input Characters</label>
+        <input id="maxInputChars" type="number" min="1000" step="500" />
+        <div class="hint">
+            The extension sends extracted page text to OpenAI for summarization.
+        </div>
 
         <button id="save">Save</button>
 
