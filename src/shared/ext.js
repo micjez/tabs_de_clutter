@@ -112,6 +112,26 @@ export function getExt() {
     ? (handler) => api.runtime.onMessage.addListener(handler)
     : missing('runtime.onMessage.addListener');
 
+  const hasContextMenus = api && api.contextMenus;
+  const contextMenusRemoveAll = hasContextMenus
+    ? (isBrowser
+      ? () => api.contextMenus.removeAll()
+      : promisifyChrome(api.contextMenus.removeAll, api.contextMenus))
+    : missing('contextMenus.removeAll');
+
+  const contextMenusCreate = hasContextMenus
+    ? (isBrowser
+      ? (createProperties) => api.contextMenus.create(createProperties)
+      : promisifyChrome(api.contextMenus.create, api.contextMenus))
+    : missing('contextMenus.create');
+
+  const hasDownloads = api && api.downloads;
+  const downloadsDownload = hasDownloads
+    ? (isBrowser
+      ? (downloadItem) => api.downloads.download(downloadItem)
+      : promisifyChrome(api.downloads.download, api.downloads))
+    : missing('downloads.download');
+
   return {
     storageSyncGet,
     storageSyncSet,
@@ -122,6 +142,9 @@ export function getExt() {
     bookmarksCreate,
     runtimeSendMessage,
     runtimeOpenOptionsPage,
-    runtimeOnMessageAddListener
+    runtimeOnMessageAddListener,
+    contextMenusRemoveAll,
+    contextMenusCreate,
+    downloadsDownload
   };
 }

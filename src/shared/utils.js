@@ -36,3 +36,27 @@ export function incrementName(base, existingNames) {
   }
   return `${base}_${i}`;
 }
+
+export function sanitizeFilename(name) {
+  return name
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 200);
+}
+
+export function isValidBookmark(bookmark) {
+  if (!bookmark || typeof bookmark !== 'object') return false;
+  return typeof bookmark.id === 'string' && 
+         typeof bookmark.title === 'string' && 
+         typeof bookmark.url === 'string' &&
+         bookmark.url.length > 0;
+}
+
+export function sortBookmarksByDate(bookmarks) {
+  return [...bookmarks].sort((a, b) => {
+    const dateA = a.dateAdded || 0;
+    const dateB = b.dateAdded || 0;
+    return dateB - dateA;
+  });
+}

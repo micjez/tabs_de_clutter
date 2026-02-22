@@ -18,6 +18,7 @@
     "web-ext": "^9.3.0"
   },
   "jest": {
-    "testEnvironment": "jsdom"
+    "testEnvironment": "jsdom",
+    "transform": {}
   }
 }

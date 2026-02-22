@@ -1,6 +1,6 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
-// Mock chrome before importing the module
+// Mock chrome before importing module
 global.chrome = {
   runtime: {
     onMessage: {
@@ -9,13 +9,28 @@ global.chrome = {
   }
 };
 
-import {
+// Preserve URL constructor and only mock blob helpers
+if (!global.URL) {
+  global.URL = URL;
+}
+global.URL.createObjectURL = jest.fn(() => 'blob:mock-url');
+global.URL.revokeObjectURL = jest.fn();
+
+jest.unstable_mockModule('../src/shared/file-handler.js', () => ({
+  saveMarkdownFile: jest.fn().mockResolvedValue(true)
+}));
+
+const {
   getSettings,
   getOtherBookmarksFolder,
   createFolderName,
   bookmarkCurrentWindowTabs,
-  closeDuplicatesInCurrentWindow
-} from '../src/shared/background.js';
+  closeDuplicatesInCurrentWindow,
+  extractBookmarksFromFolder,
+  buildFolderPath,
+  generateMarkdownTable,
+  saveBookmarkFolderAsNote
+} = await import('../src/shared/background.js');
 
 describe('background.js', () => {
   let mockChromeAPI;
@@ -47,11 +62,12 @@ describe('background.js', () => {
 
   describe('closeDuplicatesInCurrentWindow', () => {
     it('should remove duplicate tabs in current window', async () => {
-      mockChromeAPI.tabs.query.mockResolvedValue([
+      const mockTabs = [
         { id: 1, url: 'https://example.com', incognito: false },
         { id: 2, url: 'https://example.com/', incognito: false },
         { id: 3, url: 'https://other.com', incognito: false }
-      ]);
+      ];
+      mockChromeAPI.tabs.query.mockResolvedValue(mockTabs);
 
       await closeDuplicatesInCurrentWindow(mockChromeAPI);
 
@@ -310,6 +326,134 @@ describe('background.js', () => {
       await bookmarkCurrentWindowTabs(mockChromeAPI);
       
       expect(mockChromeAPI.bookmarks.create).toHaveBeenCalledTimes(2); // folder + 1 tab
+    });
+  });
+
+  describe('buildFolderPath', () => {
+    it('should build folder path from bookmark', () => {
+      const bookmark = { parentId: 'grandchild' };
+      const folderMap = {
+        'root': { title: 'Root', parentId: null },
+        'child': { title: 'Child', parentId: 'root' },
+        'grandchild': { title: 'Grandchild', parentId: 'child' }
+      };
+
+      const result = buildFolderPath(bookmark, folderMap);
+
+      expect(result).toBe('Root > Child > Grandchild');
+    });
+
+    it('should handle circular references', () => {
+      const bookmark = { parentId: 'child' };
+      const folderMap = {
+        'child': { title: 'Child', parentId: 'child' } // Circular reference
+      };
+
+      const result = buildFolderPath(bookmark, folderMap);
+
+      expect(result).toBe('Child'); // Should not infinite loop
+    });
+
+    it('should handle missing parent', () => {
+      const bookmark = { parentId: 'missing' };
+      const folderMap = {
+        'child': { title: 'Child', parentId: null }
+      };
+
+      const result = buildFolderPath(bookmark, folderMap);
+
+      expect(result).toBe('');
+    });
+  });
+
+  describe('generateMarkdownTable', () => {
+    it('should generate markdown table with bookmarks', () => {
+      const bookmarks = [
+        {
+          title: 'Test Bookmark',
+          url: 'https://example.com',
+          dateAdded: 1642694400000, // 2022-01-20
+          folderPath: 'Documents > Test'
+        }
+      ];
+
+      const result = generateMarkdownTable(bookmarks);
+
+      expect(result).toContain('# Bookmarks');
+      expect(result).toContain('| Title | Date Added | Folder Path |');
+      expect(result).toContain('| [Test Bookmark](https://example\\.com) |');
+      expect(result).toContain('Documents \\> Test');
+    });
+
+    it('should handle empty bookmarks array', () => {
+      const result = generateMarkdownTable([]);
+      expect(result).toBe('# Bookmarks\n\nNo bookmarks found.');
+    });
+
+    it('should handle null/undefined input', () => {
+      expect(generateMarkdownTable(null)).toBe('# Bookmarks\n\nNo bookmarks found.');
+      expect(generateMarkdownTable(undefined)).toBe('# Bookmarks\n\nNo bookmarks found.');
+    });
+
+    it('should escape pipe characters in markdown', () => {
+      const bookmarks = [
+        {
+          title: 'Test | Bookmark',
+          url: 'https://example.com|path',
+          folderPath: 'Documents | Test'
+        }
+      ];
+
+      const result = generateMarkdownTable(bookmarks);
+
+      expect(result).toContain('\\|'); // Should escape pipe characters
+    });
+  });
+
+  describe('saveBookmarkFolderAsNote', () => {
+    it('should save bookmark folder as note', async () => {
+      const mockFolder = {
+        id: 'folder1',
+        title: 'Test Folder',
+        children: [
+          { id: 'b1', title: 'Bookmark 1', url: 'https://example1.com' }
+        ]
+      };
+      const mockTree = [mockFolder];
+      const mockSettings = { template: 'test', behavior: 'increment' };
+
+      mockChromeAPI.storage.sync.get.mockResolvedValue(mockSettings);
+      mockChromeAPI.bookmarks.getTree.mockResolvedValue(mockTree);
+
+      await saveBookmarkFolderAsNote('folder1', mockChromeAPI);
+
+      expect(mockChromeAPI.bookmarks.getTree).toHaveBeenCalled();
+    });
+
+    it('should handle folder not found', async () => {
+      mockChromeAPI.bookmarks.getTree.mockResolvedValue([]);
+
+      await saveBookmarkFolderAsNote('nonexistent', mockChromeAPI);
+
+      // Should not throw error, just log and return
+      expect(mockChromeAPI.bookmarks.getTree).toHaveBeenCalled();
+    });
+
+    it('should handle empty folder', async () => {
+      const mockFolder = {
+        id: 'folder1',
+        title: 'Empty Folder',
+        children: []
+      };
+      const mockTree = [mockFolder];
+      const mockSettings = { template: 'test', behavior: 'increment' };
+
+      mockChromeAPI.storage.sync.get.mockResolvedValue(mockSettings);
+      mockChromeAPI.bookmarks.getTree.mockResolvedValue(mockTree);
+
+      await saveBookmarkFolderAsNote('folder1', mockChromeAPI);
+
+      expect(mockChromeAPI.bookmarks.getTree).toHaveBeenCalled();
     });
   });
 });

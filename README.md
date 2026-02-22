@@ -8,12 +8,14 @@ This extension solves the common problem of having too many tabs open by:
 
 - **Closing duplicate tabs** - Automatically identifies and closes duplicate tabs in the current window
 - **Bookmarking all tabs** - Saves all open tabs as bookmarks in a dated folder for later reference. Ensures your bookmark collection remains clean by avoiding duplicate bookmarks
+- **Exporting bookmark folders to Markdown** - Save a bookmark folder as a `.md` note from the bookmark context menu
 
 ## When to Use It
 
 - When you have dozens of research tabs open
 - When your browser becomes slow due to too many tabs
 - When you want to save your current browsing session for later
+- When you want a Markdown note of a bookmark folder
 - During research with many similar resources
 
 ## How It Works
@@ -34,6 +36,12 @@ The extension detects duplicates using **exact URL matching**. Two tabs are cons
 - All open tabs (except duplicates) are bookmarked into this folder
 - Bookmarks are created under the "Other Bookmarks" folder (or any folder containing "other" in its name)
 - If a folder with the same name already exists, you can choose to increment the name or append to the existing folder
+
+### Save Bookmark Folder as Markdown
+
+- Right-click a bookmark folder and choose **Save as note**
+- Generates a Markdown file with a table of bookmarks (title, date added, folder path)
+- A native save dialog opens so you can choose where to save the `.md` file
 
 ## Preferences (Options)
 

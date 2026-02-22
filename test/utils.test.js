@@ -4,7 +4,10 @@ import {
   DEFAULT_BEHAVIOR, 
   normalizeUrl, 
   renderTemplate, 
-  incrementName 
+  incrementName,
+  sanitizeFilename,
+  isValidBookmark,
+  sortBookmarksByDate
 } from '../src/shared/utils.js';
 
 describe('utils.js', () => {
@@ -100,6 +103,152 @@ describe('utils.js', () => {
     it('should handle base name with underscores', () => {
       const existing = ['test_name', 'test_name_1'];
       expect(incrementName('test_name', existing)).toBe('test_name_2');
+    });
+  });
+
+  describe('sanitizeFilename', () => {
+    it('should replace invalid characters with underscores', () => {
+      expect(sanitizeFilename('file<>:"/\\|?*name')).toBe('file_________name');
+    });
+
+    it('should collapse multiple spaces into single space', () => {
+      expect(sanitizeFilename('file   with    spaces')).toBe('file with spaces');
+    });
+
+    it('should trim leading and trailing whitespace', () => {
+      expect(sanitizeFilename('  filename  ')).toBe('filename');
+    });
+
+    it('should limit filename length to 200 characters', () => {
+      const longName = 'a'.repeat(250);
+      expect(sanitizeFilename(longName)).toBe('a'.repeat(200));
+    });
+
+    it('should handle empty string', () => {
+      expect(sanitizeFilename('')).toBe('');
+    });
+
+    it('should handle normal filenames', () => {
+      expect(sanitizeFilename('normal-file_name.txt')).toBe('normal-file_name.txt');
+    });
+  });
+
+  describe('isValidBookmark', () => {
+    it('should validate valid bookmark', () => {
+      const bookmark = {
+        id: '123',
+        title: 'Test Site',
+        url: 'https://example.com'
+      };
+      expect(isValidBookmark(bookmark)).toBe(true);
+    });
+
+    it('should reject bookmark without id', () => {
+      const bookmark = {
+        title: 'Test Site',
+        url: 'https://example.com'
+      };
+      expect(isValidBookmark(bookmark)).toBe(false);
+    });
+
+    it('should reject bookmark without title', () => {
+      const bookmark = {
+        id: '123',
+        url: 'https://example.com'
+      };
+      expect(isValidBookmark(bookmark)).toBe(false);
+    });
+
+    it('should reject bookmark without url', () => {
+      const bookmark = {
+        id: '123',
+        title: 'Test Site'
+      };
+      expect(isValidBookmark(bookmark)).toBe(false);
+    });
+
+    it('should reject bookmark with empty url', () => {
+      const bookmark = {
+        id: '123',
+        title: 'Test Site',
+        url: ''
+      };
+      expect(isValidBookmark(bookmark)).toBe(false);
+    });
+
+    it('should reject null/undefined bookmark', () => {
+      expect(isValidBookmark(null)).toBe(false);
+      expect(isValidBookmark(undefined)).toBe(false);
+    });
+
+    it('should handle non-string properties', () => {
+      const bookmark = {
+        id: 123,
+        title: null,
+        url: undefined
+      };
+      expect(isValidBookmark(bookmark)).toBe(false);
+    });
+  });
+
+  describe('sortBookmarksByDate', () => {
+    it('should sort bookmarks by dateAdded in descending order', () => {
+      const bookmarks = [
+        { dateAdded: 1000, title: 'Oldest' },
+        { dateAdded: 3000, title: 'Newest' },
+        { dateAdded: 2000, title: 'Middle' }
+      ];
+
+      const sorted = sortBookmarksByDate(bookmarks);
+
+      expect(sorted).toEqual([
+        { dateAdded: 3000, title: 'Newest' },
+        { dateAdded: 2000, title: 'Middle' },
+        { dateAdded: 1000, title: 'Oldest' }
+      ]);
+    });
+
+    it('should handle missing dateAdded (treated as 0)', () => {
+      const bookmarks = [
+        { dateAdded: 1000, title: 'Has Date' },
+        { title: 'No Date' },
+        { dateAdded: undefined, title: 'Undefined Date' }
+      ];
+
+      const sorted = sortBookmarksByDate(bookmarks);
+
+      expect(sorted[0]).toEqual({ dateAdded: 1000, title: 'Has Date' });
+      expect(sorted[1]).toEqual({ title: 'No Date' });
+      expect(sorted[2]).toEqual({ dateAdded: undefined, title: 'Undefined Date' });
+    });
+
+    it('should handle empty array', () => {
+      const sorted = sortBookmarksByDate([]);
+      expect(sorted).toEqual([]);
+    });
+
+    it('should not modify original array', () => {
+      const bookmarks = [
+        { dateAdded: 1000, title: 'First' },
+        { dateAdded: 2000, title: 'Second' }
+      ];
+      const original = [...bookmarks];
+
+      sortBookmarksByDate(bookmarks);
+
+      expect(bookmarks).toEqual(original);
+    });
+
+    it('should handle same dates (maintains relative order)', () => {
+      const bookmarks = [
+        { dateAdded: 1000, title: 'First' },
+        { dateAdded: 1000, title: 'Second' },
+        { dateAdded: 1000, title: 'Third' }
+      ];
+
+      const sorted = sortBookmarksByDate(bookmarks);
+
+      expect(sorted).toEqual(bookmarks);
     });
   });
 });
