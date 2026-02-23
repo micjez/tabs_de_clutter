@@ -10,6 +10,12 @@ describe('popup.js', () => {
       <button id="bookmarkBtn">bookmark</button>
       <button id="saveAsNoteBtn">save as note</button>
       <button id="saveUrlAsNoteBtn">save url as note</button>
+      <select id="bookmarkFolderSelect">
+        <option value="">Select</option>
+        <option value="2">Other bookmarks</option>
+      </select>
+      <button id="exportFolderBtn">export folder</button>
+      <p id="bookmarkExportHint"></p>
       <button id="preferencesBtn">prefs</button>
     `;
 
@@ -17,6 +23,24 @@ describe('popup.js', () => {
       runtime: {
         sendMessage: jest.fn(),
         openOptionsPage: jest.fn()
+      },
+      bookmarks: {
+        getTree: jest.fn().mockResolvedValue([
+          {
+            id: '0',
+            title: '',
+            children: [
+              { id: '1', title: 'Bookmarks bar', children: [] },
+              {
+                id: '2',
+                title: 'Other bookmarks',
+                children: [
+                  { id: '3', title: 'Work', children: [] }
+                ]
+              }
+            ]
+          }
+        ])
       }
     };
 
@@ -70,6 +94,30 @@ describe('popup.js', () => {
     document.getElementById('preferencesBtn').click();
 
     expect(mockChrome.runtime.openOptionsPage).toHaveBeenCalled();
+  });
+
+  it('sends save_bookmark_folder_as_note with selected folder id', () => {
+    setupPopup();
+    const select = document.getElementById('bookmarkFolderSelect');
+    select.value = '2';
+    document.getElementById('exportFolderBtn').click();
+
+    expect(mockChrome.runtime.sendMessage).toHaveBeenCalledWith({
+      action: 'save_bookmark_folder_as_note',
+      folderId: '2'
+    });
+    expect(window.close).toHaveBeenCalled();
+  });
+
+  it('shows hint when exporting without selecting folder', () => {
+    setupPopup();
+    document.getElementById('bookmarkFolderSelect').value = '';
+    document.getElementById('exportFolderBtn').click();
+
+    expect(mockChrome.runtime.sendMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'save_bookmark_folder_as_note' })
+    );
+    expect(document.getElementById('bookmarkExportHint').textContent).toContain('Please select a folder first.');
   });
 
   it('handles missing elements gracefully', () => {

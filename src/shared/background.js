@@ -123,6 +123,10 @@ function getNativeAPI(api) {
   return undefined;
 }
 
+function isFirefoxRuntime() {
+  return typeof browser !== 'undefined' && !!browser.runtime;
+}
+
 export async function getAiNoteSettings(chromeAPI = chrome) {
   chromeAPI = toChromeLikeAPI(chromeAPI === chrome ? getExt() : chromeAPI);
   const data = (await chromeAPI.storage.sync.get([
@@ -369,12 +373,21 @@ export async function createContextMenus(chromeAPI = chrome) {
   
   try {
     await chromeAPI.contextMenus.removeAll();
-    
-    chromeAPI.contextMenus.create({
-      id: 'save-as-note',
-      title: 'Save as note',
-      contexts: ['bookmark'],
-      documentUrlPatterns: []
+
+    if (isFirefoxRuntime()) {
+      await chromeAPI.contextMenus.create({
+        id: 'save-bookmark-folder-as-note',
+        title: 'Save as note',
+        contexts: ['bookmark']
+      });
+      return;
+    }
+
+    // Chrome does not support the "bookmark" context.
+    await chromeAPI.contextMenus.create({
+      id: 'save-current-tab-url-as-note',
+      title: 'Save current tab URL as note',
+      contexts: ['action']
     });
   } catch (error) {
     console.error('Error creating context menus:', error);
@@ -442,6 +455,16 @@ if (runtime && runtime.onMessage) {
         console.error('Error saving current tab URL as note:', error);
       });
     }
+    if (msg?.action === 'save_bookmark_folder_as_note') {
+      const folderId = msg?.folderId;
+      if (!folderId) {
+        console.error('Missing folderId for save_bookmark_folder_as_note');
+        return;
+      }
+      saveBookmarkFolderAsNote(String(folderId)).catch((error) => {
+        console.error('Error saving bookmark folder as note:', error);
+      });
+    }
   });
 }
 
@@ -454,14 +477,22 @@ if (runtime && runtime.onInstalled) {
 // Register context menu click handler for both Chrome and Firefox
 if (typeof browser !== 'undefined' && browser.contextMenus && browser.contextMenus.onClicked) {
   browser.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId === 'save-as-note') {
+    if (info.menuItemId === 'save-bookmark-folder-as-note' && info.bookmarkId) {
       saveBookmarkFolderAsNote(info.bookmarkId);
+      return;
+    }
+    if (info.menuItemId === 'save-current-tab-url-as-note') {
+      saveCurrentTabUrlAsNote().catch((error) => {
+        console.error('Error saving current tab URL as note:', error);
+      });
     }
   });
 } else if (typeof chrome !== 'undefined' && chrome.contextMenus && chrome.contextMenus.onClicked) {
   chrome.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId === 'save-as-note') {
-      saveBookmarkFolderAsNote(info.bookmarkId);
+    if (info.menuItemId === 'save-current-tab-url-as-note') {
+      saveCurrentTabUrlAsNote().catch((error) => {
+        console.error('Error saving current tab URL as note:', error);
+      });
     }
   });
 }

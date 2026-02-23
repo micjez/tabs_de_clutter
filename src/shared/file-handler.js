@@ -48,8 +48,23 @@ export async function saveFileWithFirefoxAPI(filename, content, defaultPath = nu
   const ext = getExt();
   
   try {
-    const blob = new Blob([content], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
+    let url;
+    let revokeUrl = null;
+
+    if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+      const blob = new Blob([content], { type: 'text/markdown' });
+      url = URL.createObjectURL(blob);
+      revokeUrl = url;
+    } else {
+      // createObjectURL is not always available in extension worker contexts.
+      const bytes = new TextEncoder().encode(String(content));
+      let binary = '';
+      for (const byte of bytes) {
+        binary += String.fromCharCode(byte);
+      }
+      const encoded = btoa(binary);
+      url = `data:text/markdown;charset=utf-8;base64,${encoded}`;
+    }
     
     const downloadId = await ext.downloadsDownload({
       url: url,
@@ -57,7 +72,9 @@ export async function saveFileWithFirefoxAPI(filename, content, defaultPath = nu
       saveAs: true
     });
     
-    URL.revokeObjectURL(url);
+    if (revokeUrl && typeof URL.revokeObjectURL === 'function') {
+      URL.revokeObjectURL(revokeUrl);
+    }
     return downloadId;
   } catch (error) {
     console.error('Firefox download error:', error);

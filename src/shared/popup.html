@@ -3,7 +3,7 @@
 <head>
   <style>
     body {
-      width: 240px;
+      width: 280px;
       margin: 0;
       padding: 12px;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
@@ -33,6 +33,21 @@
     button:active {
       background: #dadce0;
     }
+
+    select {
+      width: 100%;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid #dadce0;
+      background: #fff;
+      font-size: 12px;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: #5f6368;
+      margin: 0;
+    }
   </style>
 </head>
 <body>
@@ -41,6 +56,12 @@
     <button id="bookmarkBtn">Bookmark Window Tabs</button>
     <button id="saveAsNoteBtn">Save Current Tab as Note</button>
     <button id="saveUrlAsNoteBtn">Save Current Tab URL as Note</button>
+    <hr />
+    <select id="bookmarkFolderSelect" aria-label="Bookmark folder">
+      <option value="">Select bookmark folder...</option>
+    </select>
+    <button id="exportFolderBtn">Export Selected Folder as Note</button>
+    <p id="bookmarkExportHint" class="hint"></p>
     <hr />
     <button id="preferencesBtn">Preferences</button>
   </div>

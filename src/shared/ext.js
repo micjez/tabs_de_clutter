@@ -4,34 +4,64 @@ function getExtensionAPI() {
   return undefined;
 }
 
+function normalizeExtensionError(err) {
+  if (!err) return new Error('Unknown extension API error');
+  if (err instanceof Error) return err;
+
+  const maybeMessage = typeof err === 'object' && err !== null && 'message' in err
+    ? err.message
+    : undefined;
+  const message = typeof maybeMessage === 'string'
+    ? maybeMessage
+    : String(err);
+
+  const normalized = new Error(message);
+  if (typeof err === 'object' && err !== null) {
+    normalized.cause = err;
+  }
+  return normalized;
+}
+
 function promisifyChrome(fn, thisArg) {
   return (...args) => {
-    try {
-      const direct = fn.call(thisArg, ...args);
-      if (direct && typeof direct.then === 'function') {
-        return direct;
-      }
-
-      if (direct === undefined && typeof fn === 'function' && fn.length <= args.length) {
-        return Promise.resolve(direct);
-      }
-    } catch {
-    }
-
     return new Promise((resolve, reject) => {
+      const expectsCallback = typeof fn === 'function' && fn.length > args.length;
+
+      if (!expectsCallback) {
+        try {
+          const direct = fn.call(thisArg, ...args);
+          if (direct && typeof direct.then === 'function') {
+            direct.then(resolve).catch((error) => {
+              reject(normalizeExtensionError(error));
+            });
+            return;
+          }
+          resolve(direct);
+        } catch (e) {
+          reject(normalizeExtensionError(e));
+        }
+        return;
+      }
+
       try {
-        fn.call(thisArg, ...args, (result) => {
+        const maybePromise = fn.call(thisArg, ...args, (result) => {
           const err = (typeof globalThis !== 'undefined' && globalThis.chrome && globalThis.chrome.runtime)
             ? globalThis.chrome.runtime.lastError
             : undefined;
           if (err) {
-            reject(err);
+            reject(normalizeExtensionError(err));
             return;
           }
           resolve(result);
         });
+
+        if (maybePromise && typeof maybePromise.then === 'function') {
+          maybePromise.then(resolve).catch((error) => {
+            reject(normalizeExtensionError(error));
+          });
+        }
       } catch (e) {
-        reject(e);
+        reject(normalizeExtensionError(e));
       }
     });
   };

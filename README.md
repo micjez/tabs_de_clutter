@@ -43,7 +43,8 @@ The extension detects duplicates using **exact URL matching**. Two tabs are cons
 
 ### Save Bookmark Folder as Markdown
 
-- Right-click a bookmark folder and choose **Save as note**
+- **Firefox:** Right-click a bookmark folder and choose **Save as note**
+- **Chrome:** Open the popup, select a folder in **Bookmark folder**, then click **Export Selected Folder as Note**
 - Generates a Markdown file with a table of bookmarks (title, date added, folder path)
 - A native save dialog opens so you can choose where to save the `.md` file
 
