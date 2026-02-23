@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Tabs De Clutter",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Close duplicate tabs and bookmark window all tabs to catch up later",
   "permissions": ["tabs", "activeTab", "bookmarks", "storage", "contextMenus", "downloads", "https://api.openai.com/*"],
   "background": {
